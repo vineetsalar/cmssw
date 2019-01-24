@@ -104,6 +104,7 @@ process.load('HeavyIonsAnalysis.EventAnalysis.hievtanalyzer_data_cfi')
 process.load('HeavyIonsAnalysis.EventAnalysis.hltanalysis_cfi')
 process.load('HeavyIonsAnalysis.EventAnalysis.skimanalysis_cfi')
 process.load('HeavyIonsAnalysis.EventAnalysis.hltobject_cfi')
+process.load('HeavyIonsAnalysis.EventAnalysis.l1object_cfi')
 
 ###############################################################################
 
@@ -179,6 +180,7 @@ process.ana_step = cms.Path(
     process.HiForest +
     process.hltanalysis +
     process.hltobject +
+    #process.l1object +
     process.centralityBin +
     process.hiEvtAnalyzer +
     process.jetSequence +
