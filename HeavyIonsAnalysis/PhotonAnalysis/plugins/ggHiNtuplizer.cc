@@ -7,6 +7,7 @@
 #include "DataFormats/MuonReco/interface/MuonSelectors.h"
 #include "EgammaAnalysis/ElectronTools/interface/SuperClusterHelper.h"
 #include "FWCore/ServiceRegistry/interface/Service.h"
+#include "Geometry/CaloEventSetup/interface/CaloTopologyRecord.h"
 #include "Geometry/Records/interface/CaloGeometryRecord.h"
 
 #include "HeavyIonsAnalysis/PhotonAnalysis/interface/GenParticleParentage.h"
@@ -30,18 +31,20 @@ ggHiNtuplizer::ggHiNtuplizer(const edm::ParameterSet& ps) :
     genPileupCollection_    = consumes<std::vector<PileupSummaryInfo>>(ps.getParameter<edm::InputTag>("pileupCollection"));
     genParticlesCollection_ = consumes<std::vector<reco::GenParticle>>(ps.getParameter<edm::InputTag>("genParticleSrc"));
   }
-  if (doElectrons_)
+  if (doElectrons_) {
     gsfElectronsCollection_ = consumes<edm::View<reco::GsfElectron>>(ps.getParameter<edm::InputTag>("gsfElectronLabel"));
+    beamSpotToken_          = consumes<reco::BeamSpot>(ps.getParameter <edm::InputTag>("beamSpot"));
+    conversionsToken_       = consumes< reco::ConversionCollection >(ps.getParameter<edm::InputTag>("conversions"));
+  }
   if (doPhotons_)
     recoPhotonsCollection_  = consumes<edm::View<reco::Photon>>(ps.getParameter<edm::InputTag>("recoPhotonSrc"));
   if (doMuons_)
     recoMuonsCollection_    = consumes<edm::View<reco::Muon>>(ps.getParameter<edm::InputTag>("recoMuonSrc"));
   vtxCollection_          = consumes<std::vector<reco::Vertex>>(ps.getParameter<edm::InputTag>("VtxLabel"));
+  doEReg_                 = ps.getParameter<bool>("doEleERegression");
   doVID_                  = ps.getParameter<bool>("doElectronVID");
   if (doVID_) {
     rhoToken_               = consumes<double>(ps.getParameter<edm::InputTag>("rho"));
-    beamSpotToken_          = consumes<reco::BeamSpot>(ps.getParameter <edm::InputTag>("beamSpot"));
-    conversionsToken_       = consumes< reco::ConversionCollection >(ps.getParameter<edm::InputTag>("conversions"));
     eleVetoIdMapToken_      = consumes<edm::ValueMap<bool> >(ps.getParameter<edm::InputTag>("electronVetoID"));
     eleLooseIdMapToken_     = consumes<edm::ValueMap<bool> >(ps.getParameter<edm::InputTag>("electronLooseID"));
     eleMediumIdMapToken_    = consumes<edm::ValueMap<bool> >(ps.getParameter<edm::InputTag>("electronMediumID"));
@@ -51,12 +54,12 @@ ggHiNtuplizer::ggHiNtuplizer(const edm::ParameterSet& ps) :
     recoPhotonsHiIso_     = consumes<edm::ValueMap<reco::HIPhotonIsolation> > (
       ps.getParameter<edm::InputTag>("recoPhotonHiIsolationMap"));
   }
-  if(doRecHitsEB_){
+  if (doRecHitsEB_ || doEReg_) {
       recHitsEB_ = consumes<EcalRecHitCollection> (
         ps.getUntrackedParameter<edm::InputTag>("recHitsEB",
           edm::InputTag("ecalRecHit","EcalRecHitsEB")));
   }
-  if(doRecHitsEE_){
+  if (doRecHitsEE_ || doEReg_) {
       recHitsEE_ = consumes<EcalRecHitCollection> (
         ps.getUntrackedParameter<edm::InputTag>("recHitsEE",
           edm::InputTag("ecalRecHit","EcalRecHitsEE")));
@@ -123,6 +126,7 @@ ggHiNtuplizer::ggHiNtuplizer(const edm::ParameterSet& ps) :
     tree_->Branch("eleTrkEta",             &eleTrkEta_);
     tree_->Branch("eleTrkPhi",             &eleTrkPhi_);
     tree_->Branch("eleTrkCharge",          &eleTrkCharge_);
+    tree_->Branch("eleTrkPtErr",           &eleTrkPtErr_);
     tree_->Branch("eleTrkChi2",            &eleTrkChi2_);
     tree_->Branch("eleTrkNdof",            &eleTrkNdof_);
     tree_->Branch("eleTrkNormalizedChi2",  &eleTrkNormalizedChi2_);
@@ -143,13 +147,18 @@ ggHiNtuplizer::ggHiNtuplizer(const edm::ParameterSet& ps) :
     tree_->Branch("eleHoverEBc",           &eleHoverEBc_);
     tree_->Branch("eleEoverP",             &eleEoverP_);
     tree_->Branch("eleEoverPInv",          &eleEoverPInv_);
+    tree_->Branch("eleEcalE",              &eleEcalE_);
+    tree_->Branch("elePAtVtx",             &elePAtVtx_);
+    tree_->Branch("elePAtSC",              &elePAtSC_);
+    tree_->Branch("elePAtCluster",         &elePAtCluster_);
+    tree_->Branch("elePAtSeed",            &elePAtSeed_);
     tree_->Branch("eleBrem",               &eleBrem_);
     tree_->Branch("eledEtaAtVtx",          &eledEtaAtVtx_);
     tree_->Branch("eledPhiAtVtx",          &eledPhiAtVtx_);
     tree_->Branch("eleSigmaIEtaIEta",      &eleSigmaIEtaIEta_);
     tree_->Branch("eleSigmaIEtaIEta_2012", &eleSigmaIEtaIEta_2012_);
     tree_->Branch("eleSigmaIPhiIPhi",      &eleSigmaIPhiIPhi_);
-    // tree_->Branch("eleConvVeto",           &eleConvVeto_);  // TODO: not available in reco::
+    tree_->Branch("eleConvVeto",           &eleConvVeto_);
     tree_->Branch("eleMissHits",           &eleMissHits_);
     tree_->Branch("eleESEffSigmaRR",       &eleESEffSigmaRR_);
     tree_->Branch("elePFChIso",            &elePFChIso_);
@@ -164,6 +173,7 @@ ggHiNtuplizer::ggHiNtuplizer(const edm::ParameterSet& ps) :
     tree_->Branch("elePFNeuIso04",         &elePFNeuIso04_);
     tree_->Branch("elePFRelIsoWithEA",     &elePFRelIsoWithEA_);
     tree_->Branch("elePFRelIsoWithDBeta",  &elePFRelIsoWithDBeta_);
+    tree_->Branch("eleEffAreaTimesRho",    &eleEffAreaTimesRho_);
 
     tree_->Branch("eleR9",                 &eleR9_);
     tree_->Branch("eleE3x3",               &eleE3x3_);
@@ -185,12 +195,31 @@ ggHiNtuplizer::ggHiNtuplizer(const edm::ParameterSet& ps) :
     tree_->Branch("eleBC1Eta",             &eleBC1Eta_);
     tree_->Branch("eleBC2E",               &eleBC2E_);
     tree_->Branch("eleBC2Eta",             &eleBC2Eta_);
+
+    if (doEReg_) {
+      tree_->Branch("eleSeedE3x3",         &eleSeedE3x3_);
+      tree_->Branch("eleSeedE5x5",         &eleSeedE5x5_);
+      tree_->Branch("eleSEE",              &eleSEE_);
+      tree_->Branch("eleSPP",              &eleSPP_);
+      tree_->Branch("eleSEP",              &eleSEP_);
+      tree_->Branch("eleSeedEMax",         &eleSeedEMax_);
+      tree_->Branch("eleSeedE2nd",         &eleSeedE2nd_);
+      tree_->Branch("eleSeedETop",         &eleSeedETop_);
+      tree_->Branch("eleSeedEBottom",      &eleSeedEBottom_);
+      tree_->Branch("eleSeedELeft",        &eleSeedELeft_);
+      tree_->Branch("eleSeedERight",       &eleSeedERight_);
+      tree_->Branch("eleSeedE2x5Max",      &eleSeedE2x5Max_);
+      tree_->Branch("eleSeedE2x5Top",      &eleSeedE2x5Top_);
+      tree_->Branch("eleSeedE2x5Bottom",   &eleSeedE2x5Bottom_);
+      tree_->Branch("eleSeedE2x5Left",     &eleSeedE2x5Left_);
+      tree_->Branch("eleSeedE2x5Right",    &eleSeedE2x5Right_);
+      tree_->Branch("eleESOverRaw",        &eleESOverRaw_);
+    }
+
     tree_->Branch("eleIDVeto",             &eleIDVeto_);
     tree_->Branch("eleIDLoose",            &eleIDLoose_);
     tree_->Branch("eleIDMedium",           &eleIDMedium_);
     tree_->Branch("eleIDTight",            &eleIDTight_);
-    tree_->Branch("elepassConversionVeto", &elepassConversionVeto_);
-    tree_->Branch("eleEffAreaTimesRho",    &eleEffAreaTimesRho_);
   }
 
   if (doPhotons_) {
@@ -420,6 +449,7 @@ void ggHiNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es)
     eleTrkEta_            .clear();
     eleTrkPhi_            .clear();
     eleTrkCharge_         .clear();
+    eleTrkPtErr_          .clear();
     eleTrkChi2_           .clear();
     eleTrkNdof_           .clear();
     eleTrkNormalizedChi2_ .clear();
@@ -439,13 +469,18 @@ void ggHiNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es)
     eleHoverEBc_          .clear();
     eleEoverP_            .clear();
     eleEoverPInv_         .clear();
+    eleEcalE_             .clear();
+    elePAtVtx_            .clear();
+    elePAtSC_             .clear();
+    elePAtCluster_        .clear();
+    elePAtSeed_           .clear();
     eleBrem_              .clear();
     eledEtaAtVtx_         .clear();
     eledPhiAtVtx_         .clear();
     eleSigmaIEtaIEta_     .clear();
     eleSigmaIEtaIEta_2012_.clear();
     eleSigmaIPhiIPhi_     .clear();
-    // eleConvVeto_          .clear();  // TODO: not available in reco::
+    eleConvVeto_          .clear();
     eleMissHits_          .clear();
     eleESEffSigmaRR_      .clear();
     elePFChIso_           .clear();
@@ -483,7 +518,6 @@ void ggHiNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es)
     eleIDLoose_           .clear();
     eleIDMedium_          .clear();
     eleIDTight_           .clear();
-    elepassConversionVeto_.clear();
     eleEffAreaTimesRho_   .clear();
   }
 
@@ -680,10 +714,15 @@ void ggHiNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es)
       break;
     }
 
-  if (doRecHitsEB_ || doRecHitsEE_) {
-      edm::ESHandle<CaloGeometry> pGeo;
-      es.get<CaloGeometryRecord>().get(pGeo);
-      geo = pGeo.product();
+  if (doRecHitsEB_ || doRecHitsEE_ || doEReg_) {
+    edm::ESHandle<CaloGeometry> pGeo;
+    es.get<CaloGeometryRecord>().get(pGeo);
+    geo = pGeo.product();
+  }
+  if (doEReg_) {
+    edm::ESHandle<CaloTopology> pTopo;
+    es.get<CaloTopologyRecord>().get(pTopo);
+    topo = pTopo.product();
   }
 
   if (doElectrons_) fillElectrons(e, es, pv);
@@ -869,7 +908,17 @@ void ggHiNtuplizer::fillElectrons(const edm::Event& e, const edm::EventSetup& es
   e.getByToken(gsfElectronsCollection_, gsfElectronsHandle);
 
   edm::Handle<reco::ConversionCollection> conversions;
+  e.getByToken(conversionsToken_, conversions);
+
   edm::Handle<reco::BeamSpot> theBeamSpot;
+  e.getByToken(beamSpotToken_, theBeamSpot);
+
+  edm::Handle<EcalRecHitCollection> recHitsEBHandle;
+  edm::Handle<EcalRecHitCollection> recHitsEEHandle;
+  if (doEReg_) {
+      e.getByToken(recHitsEB_, recHitsEBHandle);
+      e.getByToken(recHitsEE_, recHitsEEHandle);
+  }
 
   edm::Handle<edm::ValueMap<bool> > veto_id_decisions;
   edm::Handle<edm::ValueMap<bool> > loose_id_decisions;
@@ -882,12 +931,6 @@ void ggHiNtuplizer::fillElectrons(const edm::Event& e, const edm::EventSetup& es
   float rho = rhoH.isValid() ? *rhoH : -999;
 
   if (doVID_) {
-    // Get the conversions collection
-    e.getByToken(conversionsToken_, conversions);
-
-    // Get the beam spot
-    e.getByToken(beamSpotToken_, theBeamSpot);
-
     // Get the electron ID data from the event stream.
     // Note: this implies that the VID ID modules have been run upstream.
     // If you need more info, check with the EGM group.
@@ -896,7 +939,6 @@ void ggHiNtuplizer::fillElectrons(const edm::Event& e, const edm::EventSetup& es
     e.getByToken(eleMediumIdMapToken_, medium_id_decisions);
     e.getByToken(eleTightIdMapToken_, tight_id_decisions);
   }
-
 
   // loop over electrons
   for (auto ele = gsfElectronsHandle->begin(); ele != gsfElectronsHandle->end(); ++ele) {
@@ -917,6 +959,7 @@ void ggHiNtuplizer::fillElectrons(const edm::Event& e, const edm::EventSetup& es
     eleTrkEta_           .push_back(ele->gsfTrack()->eta());
     eleTrkPhi_           .push_back(ele->gsfTrack()->phi());
     eleTrkCharge_        .push_back(ele->gsfTrack()->charge());
+    eleTrkPtErr_         .push_back(ele->gsfTrack()->ptError());
     eleTrkChi2_          .push_back(ele->gsfTrack()->chi2());
     eleTrkNdof_          .push_back(ele->gsfTrack()->ndof());
     eleTrkNormalizedChi2_.push_back(ele->gsfTrack()->normalizedChi2());
@@ -935,13 +978,17 @@ void ggHiNtuplizer::fillElectrons(const edm::Event& e, const edm::EventSetup& es
     eleHoverE_           .push_back(ele->hcalOverEcal());
     eleHoverEBc_         .push_back(ele->hcalOverEcalBc());
     eleEoverP_           .push_back(ele->eSuperClusterOverP());
-    eleEoverPInv_        .push_back(std::abs(1./ele->ecalEnergy() - 1./ele->trackMomentumAtVtx().R()));
+    eleEoverPInv_        .push_back(1./ele->ecalEnergy() - 1./ele->trackMomentumAtVtx().R());
+    eleEcalE_            .push_back(ele->ecalEnergy());
+    elePAtVtx_           .push_back(ele->trackMomentumAtVtx().R());
+    elePAtSC_            .push_back(ele->trackMomentumAtCalo().R());
+    elePAtCluster_       .push_back(ele->trackMomentumAtEleClus().R());
+    elePAtSeed_          .push_back(ele->trackMomentumOut().R());
     eleBrem_             .push_back(ele->fbrem());
     eledEtaAtVtx_        .push_back(ele->deltaEtaSuperClusterTrackAtVtx());
     eledPhiAtVtx_        .push_back(ele->deltaPhiSuperClusterTrackAtVtx());
     eleSigmaIEtaIEta_    .push_back(ele->sigmaIetaIeta());
     eleSigmaIPhiIPhi_    .push_back(ele->sigmaIphiIphi());
-    // eleConvVeto_         .push_back((int)ele->passConversionVeto()); // TODO: not available in reco::
     eleMissHits_         .push_back(ele->gsfTrack()->numberOfLostHits());
 
     // full 5x5
@@ -959,6 +1006,11 @@ void ggHiNtuplizer::fillElectrons(const edm::Event& e, const edm::EventSetup& es
       pfIso.sumNeutralHadronEt + pfIso.sumPhotonEt - rho * area)) / ele->pt());
     elePFRelIsoWithDBeta_.push_back((pfIso.sumChargedHadronPt + std::max(0.0,
       pfIso.sumNeutralHadronEt + pfIso.sumPhotonEt - 0.5 * pfIso.sumPUPt)) / ele->pt());
+    eleEffAreaTimesRho_.push_back(area * rho);
+
+    bool passConvVeto = !ConversionTools::hasMatchedConversion(
+      *ele, conversions, theBeamSpot->position());
+    eleConvVeto_.push_back( (int) passConvVeto );
 
     // calculation on the fly
     pfIsoCalculator pfIsoCal(e, pfCollection_, pv);
@@ -990,6 +1042,34 @@ void ggHiNtuplizer::fillElectrons(const edm::Event& e, const edm::EventSetup& es
     eleSeedEn_            .push_back(ele->superCluster()->seed()->energy());
     eleSeedEta_           .push_back(ele->superCluster()->seed()->eta());
     eleSeedPhi_           .push_back(ele->superCluster()->seed()->phi());
+
+    /* regression variables */
+    if (doEReg_) {
+      auto sch = std::make_unique<SuperClusterHelper>(
+        &(*ele),
+        ele->isEB() ? recHitsEBHandle.product() : recHitsEEHandle.product(),
+        topo,
+        geo);
+
+      eleSeedE3x3_      .push_back(sch->e3x3());
+      eleSeedE5x5_      .push_back(sch->e5x5());
+      eleSEE_           .push_back(sch->sigmaIetaIeta());
+      eleSPP_           .push_back(sch->spp());
+      eleSEP_           .push_back(sch->sep());
+      eleSeedEMax_      .push_back(sch->eMax());
+      eleSeedE2nd_      .push_back(sch->e2nd());
+      eleSeedETop_      .push_back(sch->eTop());
+      eleSeedEBottom_   .push_back(sch->eBottom());
+      eleSeedELeft_     .push_back(sch->eLeft());
+      eleSeedERight_    .push_back(sch->eRight());
+      eleSeedE2x5Max_   .push_back(sch->e2x5Max());
+      eleSeedE2x5Top_   .push_back(sch->e2x5Top());
+      eleSeedE2x5Bottom_.push_back(sch->e2x5Bottom());
+      eleSeedE2x5Left_  .push_back(sch->e2x5Left());
+      eleSeedE2x5Right_ .push_back(sch->e2x5Right());
+      eleESOverRaw_     .push_back(sch->preshowerEnergyOverRaw());
+    }
+
     // local coordinates
     edm::Ptr<reco::CaloCluster> theseed = ele->superCluster()->seed();
     EcalClusterLocal ecalLocal;
@@ -1005,30 +1085,23 @@ void ggHiNtuplizer::fillElectrons(const edm::Event& e, const edm::EventSetup& es
       float cryX, cryY, thetatilt, phitilt;
       int ix, iy;
       ecalLocal.localCoordsEE(*(theseed), es, cryX, cryY, ix, iy, thetatilt, phitilt);
-      eleSeedCryEta_  .push_back(0);
-      eleSeedCryPhi_  .push_back(0);
-      eleSeedCryIeta_ .push_back(0);
-      eleSeedCryIphi_ .push_back(0);
+      eleSeedCryEta_  .push_back(cryX);
+      eleSeedCryPhi_  .push_back(cryY);
+      eleSeedCryIeta_ .push_back(ix);
+      eleSeedCryIphi_ .push_back(iy);
     }
 
+    // parameters of the very first PFCluster
+    // reco::CaloCluster_iterator bc = ele->superCluster()->clustersBegin();
+    // if (bc != ele->superCluster()->clustersEnd()) {
+    //    eleBC2E_  .push_back((*bc)->energy());
+    //    eleBC2Eta_.push_back((*bc)->eta());
+    // } else {
+    //    eleBC2E_  .push_back(-99);
+    //    eleBC2Eta_.push_back(-99);
+    // }
+
     if (doVID_) {
-      eleEffAreaTimesRho_.push_back(area * rho);
-
-      bool passConvVeto = !ConversionTools::hasMatchedConversion(*ele,
-          conversions,
-          theBeamSpot->position());
-      elepassConversionVeto_.push_back( (int) passConvVeto );
-
-      // parameters of the very first PFCluster
-      // reco::CaloCluster_iterator bc = ele->superCluster()->clustersBegin();
-      // if (bc != ele->superCluster()->clustersEnd()) {
-      //    eleBC2E_  .push_back((*bc)->energy());
-      //    eleBC2Eta_.push_back((*bc)->eta());
-      // } else {
-      //    eleBC2E_  .push_back(-99);
-      //    eleBC2Eta_.push_back(-99);
-      // }
-
       const edm::Ptr<reco::GsfElectron> elePtr(gsfElectronsHandle, ele - gsfElectronsHandle->begin()); //value map is keyed of edm::Ptrs so we need to make one
       bool passVetoID   = false;
       bool passLooseID  = false;
