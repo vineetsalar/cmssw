@@ -9,6 +9,8 @@
 #include "FWCore/ServiceRegistry/interface/Service.h"
 #include "Geometry/CaloEventSetup/interface/CaloTopologyRecord.h"
 #include "Geometry/Records/interface/CaloGeometryRecord.h"
+#include "TrackingTools/IPTools/interface/IPTools.h"
+#include "TrackingTools/Records/interface/TransientTrackRecord.h"
 
 #include "HeavyIonsAnalysis/PhotonAnalysis/interface/GenParticleParentage.h"
 #include "HeavyIonsAnalysis/PhotonAnalysis/interface/ggHiNtuplizer.h"
@@ -122,8 +124,10 @@ ggHiNtuplizer::ggHiNtuplizer(const edm::ParameterSet& ps) :
     tree_->Branch("eleEn",                 &eleEn_);
     tree_->Branch("eleD0",                 &eleD0_);
     tree_->Branch("eleDz",                 &eleDz_);
+    tree_->Branch("eleIP3D",               &eleIP3D_);
     tree_->Branch("eleD0Err",              &eleD0Err_);
     tree_->Branch("eleDzErr",              &eleDzErr_);
+    tree_->Branch("eleIP3DErr",            &eleIP3DErr_);
     tree_->Branch("eleTrkPt",              &eleTrkPt_);
     tree_->Branch("eleTrkEta",             &eleTrkEta_);
     tree_->Branch("eleTrkPhi",             &eleTrkPhi_);
@@ -398,6 +402,10 @@ ggHiNtuplizer::ggHiNtuplizer(const edm::ParameterSet& ps) :
     tree_->Branch("muIsGood",              &muIsGood_);
     tree_->Branch("muD0",                  &muD0_);
     tree_->Branch("muDz",                  &muDz_);
+    tree_->Branch("muIP3D",                &muIP3D_);
+    tree_->Branch("muD0Err",               &muD0Err_);
+    tree_->Branch("muDzErr",               &muDzErr_);
+    tree_->Branch("muIP3DErr",             &muIP3DErr_);
     tree_->Branch("muChi2NDF",             &muChi2NDF_);
     tree_->Branch("muInnerD0",             &muInnerD0_);
     tree_->Branch("muInnerDz",             &muInnerDz_);
@@ -412,6 +420,14 @@ ggHiNtuplizer::ggHiNtuplizer(const edm::ParameterSet& ps) :
     tree_->Branch("muPFPhoIso",            &muPFPhoIso_);
     tree_->Branch("muPFNeuIso",            &muPFNeuIso_);
     tree_->Branch("muPFPUIso",             &muPFPUIso_);
+    tree_->Branch("muIDSoft",              &muIDSoft_);
+    tree_->Branch("muIDLoose",             &muIDLoose_);
+    tree_->Branch("muIDMedium",            &muIDMedium_);
+    tree_->Branch("muIDMediumPrompt",      &muIDMediumPrompt_);
+    tree_->Branch("muIDTight",             &muIDTight_);
+    tree_->Branch("muIDGlobalHighPt",      &muIDGlobalHighPt_);
+    tree_->Branch("muIDTrkHighPt",         &muIDTrkHighPt_);
+    tree_->Branch("muIDInTime",            &muIDInTime_);
   }
 }
 
@@ -461,8 +477,10 @@ void ggHiNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es)
     eleEn_                .clear();
     eleD0_                .clear();
     eleDz_                .clear();
+    eleIP3D_              .clear();
     eleD0Err_             .clear();
     eleDzErr_             .clear();
+    eleIP3DErr_           .clear();
     eleTrkPt_             .clear();
     eleTrkEta_            .clear();
     eleTrkPhi_            .clear();
@@ -724,6 +742,10 @@ void ggHiNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es)
     muIsGood_             .clear();
     muD0_                 .clear();
     muDz_                 .clear();
+    muIP3D_               .clear();
+    muD0Err_              .clear();
+    muDzErr_              .clear();
+    muIP3DErr_            .clear();
     muChi2NDF_            .clear();
     muInnerD0_            .clear();
     muInnerDz_            .clear();
@@ -738,6 +760,14 @@ void ggHiNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es)
     muPFPhoIso_           .clear();
     muPFNeuIso_           .clear();
     muPFPUIso_            .clear();
+    muIDSoft_             .clear();
+    muIDLoose_            .clear();
+    muIDMedium_           .clear();
+    muIDMediumPrompt_     .clear();
+    muIDTight_            .clear();
+    muIDGlobalHighPt_     .clear();
+    muIDTrkHighPt_        .clear();
+    muIDInTime_           .clear();
   }
 
   run_    = e.id().run();
@@ -755,12 +785,16 @@ void ggHiNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es)
   e.getByToken(vtxCollection_, vtxHandle);
 
   // best-known primary vertex coordinates
-  math::XYZPoint pv(0, 0, 0);
+  reco::Vertex pv(math::XYZPoint(0, 0, -999), math::Error<3>::type());
   for (const auto& v : *vtxHandle)
     if (!v.isFake()) {
-      pv.SetXYZ(v.x(), v.y(), v.z());
+      pv = v;
       break;
     }
+
+  edm::ESHandle<TransientTrackBuilder> trackBuilder;
+  es.get<TransientTrackRecord>().get("TransientTrackBuilder", trackBuilder);
+  tb = trackBuilder.product();
 
   if (doRecHitsEB_ || doRecHitsEE_ || doEReg_) {
     edm::ESHandle<CaloGeometry> pGeo;
@@ -948,7 +982,7 @@ float ggHiNtuplizer::getGenTrkIso(edm::Handle<std::vector<reco::GenParticle> > &
   return ptSum;
 }
 
-void ggHiNtuplizer::fillElectrons(const edm::Event& e, const edm::EventSetup& es, math::XYZPoint& pv)
+void ggHiNtuplizer::fillElectrons(const edm::Event& e, const edm::EventSetup& es, reco::Vertex& pv)
 {
   // Fills tree branches with reco GSF electrons.
 
@@ -1003,8 +1037,8 @@ void ggHiNtuplizer::fillElectrons(const edm::Event& e, const edm::EventSetup& es
       eleCtfCharge_        .push_back(-99.);
     }
     eleEn_               .push_back(ele->energy());
-    eleD0_               .push_back(ele->gsfTrack()->dxy(pv));
-    eleDz_               .push_back(ele->gsfTrack()->dz(pv));
+    eleD0_               .push_back(ele->gsfTrack()->dxy(pv.position()));
+    eleDz_               .push_back(ele->gsfTrack()->dz(pv.position()));
     eleD0Err_            .push_back(ele->gsfTrack()->dxyError());
     eleDzErr_            .push_back(ele->gsfTrack()->dzError());
     eleTrkPt_            .push_back(ele->gsfTrack()->pt());
@@ -1066,8 +1100,20 @@ void ggHiNtuplizer::fillElectrons(const edm::Event& e, const edm::EventSetup& es
       *ele, conversions, theBeamSpot->position());
     eleConvVeto_.push_back( (int) passConvVeto );
 
+    //Initialize with nonphysical values
+    float eleIP3D = -999;
+    float eleIP3DErr = -999;
+    if (pv.isValid()) {
+      //3DImpact parameter
+      reco::TransientTrack tt = tb->build(ele->gsfTrack().get());
+      eleIP3D = IPTools::absoluteImpactParameter3D(tt, pv).second.value();
+      eleIP3DErr = IPTools::absoluteImpactParameter3D(tt, pv).second.error();
+    }
+    eleIP3D_               .push_back(eleIP3D);
+    eleIP3DErr_            .push_back(eleIP3DErr);
+
     // calculation on the fly
-    pfIsoCalculator pfIsoCal(e, pfCollection_, pv);
+    pfIsoCalculator pfIsoCal(e, pfCollection_, pv.position());
     if (std::abs(ele->superCluster()->eta()) > 1.566) {
       elePFChIso03_          .push_back(pfIsoCal.getPfIso(*ele, 1, 0.3, 0.015, 0.));
       elePFChIso04_          .push_back(pfIsoCal.getPfIso(*ele, 1, 0.4, 0.015, 0.));
@@ -1186,7 +1232,7 @@ void ggHiNtuplizer::fillElectrons(const edm::Event& e, const edm::EventSetup& es
   } // electrons loop
 }
 
-void ggHiNtuplizer::fillPhotons(const edm::Event& e, const edm::EventSetup& es, math::XYZPoint& pv)
+void ggHiNtuplizer::fillPhotons(const edm::Event& e, const edm::EventSetup& es, reco::Vertex& pv)
 {
   // Fills tree branches with photons.
 
@@ -1430,7 +1476,7 @@ void ggHiNtuplizer::fillPhotons(const edm::Event& e, const edm::EventSetup& es, 
     }
 
     if (doPfIso_) {
-      pfIsoCalculator pfIso(e, pfCollection_, pv);
+      pfIsoCalculator pfIso(e, pfCollection_, pv.position());
       // particle flow isolation
       pfcIso1.push_back( pfIso.getPfIso(*pho, 1, 0.1, 0.02, 0.0, 0 ));
       pfcIso2.push_back( pfIso.getPfIso(*pho, 1, 0.2, 0.02, 0.0, 0 ));
@@ -1493,7 +1539,7 @@ void ggHiNtuplizer::fillPhotons(const edm::Event& e, const edm::EventSetup& es, 
   } // photons loop
 }
 
-void ggHiNtuplizer::fillMuons(const edm::Event& e, const edm::EventSetup& es, math::XYZPoint& pv)
+void ggHiNtuplizer::fillMuons(const edm::Event& e, const edm::EventSetup& es, reco::Vertex& pv)
 {
   // Fills tree branches with reco muons.
 
@@ -1510,8 +1556,22 @@ void ggHiNtuplizer::fillMuons(const edm::Event& e, const edm::EventSetup& es, ma
     muCharge_.push_back(mu.charge());
     muType_  .push_back(mu.type());
     muIsGood_.push_back(muon::isGoodMuon(mu, muon::selectionTypeFromString("TMOneStationTight")));
-    muD0_    .push_back(mu.muonBestTrack()->dxy(pv));
-    muDz_    .push_back(mu.muonBestTrack()->dz(pv));
+    muD0_    .push_back(mu.muonBestTrack()->dxy(pv.position()));
+    muDz_    .push_back(mu.muonBestTrack()->dz(pv.position()));
+    muD0Err_ .push_back(mu.muonBestTrack()->dxyError());
+    muDzErr_ .push_back(mu.muonBestTrack()->dzError());
+
+    //Initialize with nonphysical values
+    float muIP3D = -999;
+    float muIP3DErr = -999;
+    if (pv.isValid()) {
+      //3DImpact parameter
+      reco::TransientTrack tt = tb->build(mu.muonBestTrack().get());
+      muIP3D = IPTools::absoluteImpactParameter3D(tt, pv).second.value();
+      muIP3DErr = IPTools::absoluteImpactParameter3D(tt, pv).second.error();
+    }
+    muIP3D_    .push_back(muIP3D);
+    muIP3DErr_ .push_back(muIP3DErr);
 
     const reco::TrackRef glbMu = mu.globalTrack();
     const reco::TrackRef innMu = mu.innerTrack();
@@ -1532,8 +1592,8 @@ void ggHiNtuplizer::fillMuons(const edm::Event& e, const edm::EventSetup& es, ma
       muPixelHits_   .push_back(-99);
       muTrkQuality_  .push_back(-99);
     } else {
-      muInnerD0_     .push_back(innMu->dxy(pv));
-      muInnerDz_     .push_back(innMu->dz(pv));
+      muInnerD0_     .push_back(innMu->dxy(pv.position()));
+      muInnerDz_     .push_back(innMu->dz(pv.position()));
       muTrkLayers_   .push_back(innMu->hitPattern().trackerLayersWithMeasurement());
       muPixelLayers_ .push_back(innMu->hitPattern().pixelLayersWithMeasurement());
       muPixelHits_   .push_back(innMu->hitPattern().numberOfValidPixelHits());
@@ -1546,6 +1606,14 @@ void ggHiNtuplizer::fillMuons(const edm::Event& e, const edm::EventSetup& es, ma
     muPFPhoIso_ .push_back(mu.pfIsolationR04().sumPhotonEt);
     muPFNeuIso_ .push_back(mu.pfIsolationR04().sumNeutralHadronEt);
     muPFPUIso_  .push_back(mu.pfIsolationR04().sumPUPt);
+    muIDSoft_   .push_back(mu.passed(reco::Muon::SoftMvaId));
+    muIDLoose_  .push_back(mu.passed(reco::Muon::CutBasedIdLoose));
+    muIDMedium_ .push_back(mu.passed(reco::Muon::CutBasedIdMedium));
+    muIDMediumPrompt_.push_back(mu.passed(reco::Muon::CutBasedIdMediumPrompt));
+    muIDTight_.push_back(mu.passed(reco::Muon::CutBasedIdTight));
+    muIDGlobalHighPt_.push_back(mu.passed(reco::Muon::CutBasedIdGlobalHighPt));
+    muIDTrkHighPt_.push_back(mu.passed(reco::Muon::CutBasedIdTrkHighPt));
+    muIDInTime_ .push_back(mu.passed(reco::Muon::InTimeMuon));
 
     nMu_++;
   } // muons loop

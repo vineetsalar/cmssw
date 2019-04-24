@@ -24,6 +24,7 @@
 #include "RecoEgamma/EgammaTools/interface/ConversionTools.h"
 #include "RecoEgamma/EgammaTools/interface/EffectiveAreas.h"
 #include "SimDataFormats/PileupSummaryInfo/interface/PileupSummaryInfo.h"
+#include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h"
 
 #include <TTree.h>
 
@@ -40,9 +41,9 @@ class ggHiNtuplizer : public edm::EDAnalyzer {
 
    void fillGenParticles (const edm::Event&);
    void fillGenPileupInfo(const edm::Event&);
-   void fillElectrons    (const edm::Event&, const edm::EventSetup&, math::XYZPoint& pv);
-   void fillPhotons      (const edm::Event&, const edm::EventSetup&, math::XYZPoint& pv);
-   void fillMuons        (const edm::Event&, const edm::EventSetup&, math::XYZPoint& pv);
+   void fillElectrons    (const edm::Event&, const edm::EventSetup&, reco::Vertex& pv);
+   void fillPhotons      (const edm::Event&, const edm::EventSetup&, reco::Vertex& pv);
+   void fillMuons        (const edm::Event&, const edm::EventSetup&, reco::Vertex& pv);
 
    // Et and pT sums
    float getGenCalIso(edm::Handle<std::vector<reco::GenParticle> >&, reco::GenParticleCollection::const_iterator, float dRMax, bool removeMu, bool removeNu);
@@ -84,6 +85,7 @@ class ggHiNtuplizer : public edm::EDAnalyzer {
 
    const CaloGeometry *geo;
    const CaloTopology* topo;
+   const TransientTrackBuilder* tb;
 
    EffectiveAreas effectiveAreas_;
 
@@ -137,8 +139,10 @@ class ggHiNtuplizer : public edm::EDAnalyzer {
    std::vector<float>  eleEn_;
    std::vector<float>  eleD0_;
    std::vector<float>  eleDz_;
+   std::vector<float>  eleIP3D_;
    std::vector<float>  eleD0Err_;
    std::vector<float>  eleDzErr_;
+   std::vector<float>  eleIP3DErr_;
    std::vector<float>  eleTrkPt_;
    std::vector<float>  eleTrkEta_;
    std::vector<float>  eleTrkPhi_;
@@ -389,6 +393,10 @@ class ggHiNtuplizer : public edm::EDAnalyzer {
    std::vector<int>    muIsGood_;
    std::vector<float>  muD0_;
    std::vector<float>  muDz_;
+   std::vector<float>  muIP3D_;
+   std::vector<float>  muD0Err_;
+   std::vector<float>  muDzErr_;
+   std::vector<float>  muIP3DErr_;
    std::vector<float>  muChi2NDF_;
    std::vector<float>  muInnerD0_;
    std::vector<float>  muInnerDz_;
@@ -403,6 +411,15 @@ class ggHiNtuplizer : public edm::EDAnalyzer {
    std::vector<float>  muPFPhoIso_;
    std::vector<float>  muPFNeuIso_;
    std::vector<float>  muPFPUIso_;
+   //https://twiki.cern.ch/twiki/bin/view/CMS/SWGuideMuonIdRun2#Muon_selectors_Since_9_4_X
+   std::vector<int>    muIDSoft_;
+   std::vector<int>    muIDLoose_;
+   std::vector<int>    muIDMedium_;
+   std::vector<int>    muIDMediumPrompt_;
+   std::vector<int>    muIDTight_;
+   std::vector<int>    muIDGlobalHighPt_;
+   std::vector<int>    muIDTrkHighPt_;
+   std::vector<int>    muIDInTime_;
 };
 
 #endif
