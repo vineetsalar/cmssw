@@ -96,6 +96,7 @@ class ggHiNtuplizer : public edm::EDAnalyzer {
    ULong64_t      event_;
    UInt_t         lumis_;
    Bool_t         isData_;
+   Float_t        rho_;
 
    // PileupSummaryInfo
    Int_t          nPUInfo_;
@@ -131,7 +132,6 @@ class ggHiNtuplizer : public edm::EDAnalyzer {
 
    // reco::GsfElectron
    Int_t          nEle_;
-   Float_t        eleRho_;
    std::vector<int>    eleCharge_;
    std::vector<int>    eleChargeConsistent_;
    std::vector<int>    eleSCPixCharge_;

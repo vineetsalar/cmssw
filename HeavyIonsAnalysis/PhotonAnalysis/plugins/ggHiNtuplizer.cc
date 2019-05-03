@@ -26,9 +26,10 @@ ggHiNtuplizer::ggHiNtuplizer(const edm::ParameterSet& ps) :
   doMuons_                = ps.getParameter<bool>("doMuons");
   runOnParticleGun_       = ps.getParameter<bool>("runOnParticleGun");
   useValMapIso_           = ps.getParameter<bool>("useValMapIso");
-  doPfIso_                = ps.getParameter<bool>("doPfIso");
+  doEffectiveAreas_       = ps.getParameter<bool>("doEffectiveAreas");
   doRecHitsEB_            = ps.getParameter<bool>("doRecHitsEB");
   doRecHitsEE_            = ps.getParameter<bool>("doRecHitsEE");
+  doPfIso_                = ps.getParameter<bool>("doPfIso");
   if (doGenParticles_) {
     genPileupCollection_    = consumes<std::vector<PileupSummaryInfo>>(ps.getParameter<edm::InputTag>("pileupCollection"));
     genParticlesCollection_ = consumes<std::vector<reco::GenParticle>>(ps.getParameter<edm::InputTag>("genParticleSrc"));
@@ -37,9 +38,6 @@ ggHiNtuplizer::ggHiNtuplizer(const edm::ParameterSet& ps) :
     gsfElectronsCollection_ = consumes<edm::View<reco::GsfElectron>>(ps.getParameter<edm::InputTag>("gsfElectronLabel"));
     beamSpotToken_          = consumes<reco::BeamSpot>(ps.getParameter <edm::InputTag>("beamSpot"));
     conversionsToken_       = consumes< reco::ConversionCollection >(ps.getParameter<edm::InputTag>("conversions"));
-    doEffectiveAreas_       = ps.getParameter<bool>("doEffectiveAreas");
-    if (doEffectiveAreas_)
-      rhoToken_               = consumes<double>(ps.getParameter<edm::InputTag>("rho"));
     doVID_                  = ps.getParameter<bool>("doElectronVID");
     if (doVID_) {
       eleVetoIdMapToken_      = consumes<edm::ValueMap<bool> >(ps.getParameter<edm::InputTag>("electronVetoID"));
@@ -57,6 +55,9 @@ ggHiNtuplizer::ggHiNtuplizer(const edm::ParameterSet& ps) :
   if (useValMapIso_) {
     recoPhotonsHiIso_     = consumes<edm::ValueMap<reco::HIPhotonIsolation> > (
       ps.getParameter<edm::InputTag>("recoPhotonHiIsolationMap"));
+  }
+  if (doEffectiveAreas_) {
+      rhoToken_ = consumes<double>(ps.getParameter<edm::InputTag>("rho"));
   }
   if (doRecHitsEB_ || doEReg_) {
       recHitsEB_ = consumes<EcalRecHitCollection> (
@@ -82,6 +83,9 @@ ggHiNtuplizer::ggHiNtuplizer(const edm::ParameterSet& ps) :
   tree_->Branch("event",  &event_);
   tree_->Branch("lumis",  &lumis_);
   tree_->Branch("isData", &isData_);
+  if (doEffectiveAreas_) {
+    tree_->Branch("rho",  &rho_);
+  }
 
   if (doGenParticles_) {
     tree_->Branch("nPUInfo",      &nPUInfo_);
@@ -179,7 +183,6 @@ ggHiNtuplizer::ggHiNtuplizer(const edm::ParameterSet& ps) :
     tree_->Branch("elePFNeuIso04",         &elePFNeuIso04_);
 
     if (doEffectiveAreas_) {
-      tree_->Branch("eleRho",                &eleRho_);
       tree_->Branch("elePFRelIsoWithEA",     &elePFRelIsoWithEA_);
       tree_->Branch("elePFRelIsoWithDBeta",  &elePFRelIsoWithDBeta_);
       tree_->Branch("eleEffAreaTimesRho",    &eleEffAreaTimesRho_);
@@ -469,7 +472,6 @@ void ggHiNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es)
 
   if (doElectrons_) {
     nEle_ = 0;
-    eleRho_ = -1;
     eleCharge_            .clear();
     eleChargeConsistent_  .clear();
     eleSCPixCharge_       .clear();
@@ -775,6 +777,14 @@ void ggHiNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es)
   lumis_  = e.luminosityBlock();
   isData_ = e.isRealData();
 
+  rho_ = -1;
+  edm::Handle<double> rhoH;
+  if (doEffectiveAreas_) {
+    e.getByToken(rhoToken_, rhoH);
+
+    rho_ = *rhoH;
+  }
+
   // MC truth
   if (doGenParticles_ && !isData_) {
     fillGenPileupInfo(e);
@@ -1003,14 +1013,6 @@ void ggHiNtuplizer::fillElectrons(const edm::Event& e, const edm::EventSetup& es
       e.getByToken(recHitsEE_, recHitsEEHandle);
   }
 
-  edm::Handle<double> rhoH;
-
-  if (doEffectiveAreas_) {
-    e.getByToken(rhoToken_, rhoH);
-
-    eleRho_ = *rhoH;
-  }
-
   edm::Handle<edm::ValueMap<bool> > veto_id_decisions;
   edm::Handle<edm::ValueMap<bool> > loose_id_decisions;
   edm::Handle<edm::ValueMap<bool> > medium_id_decisions;
@@ -1090,10 +1092,10 @@ void ggHiNtuplizer::fillElectrons(const edm::Event& e, const edm::EventSetup& es
     if (doEffectiveAreas_) {
       double area = effectiveAreas_.getEffectiveArea(ele->superCluster()->eta());
       elePFRelIsoWithEA_   .push_back((pfIso.sumChargedHadronPt + std::max(0.0,
-        pfIso.sumNeutralHadronEt + pfIso.sumPhotonEt - eleRho_ * area)) / ele->pt());
+        pfIso.sumNeutralHadronEt + pfIso.sumPhotonEt - rho_ * area)) / ele->pt());
       elePFRelIsoWithDBeta_.push_back((pfIso.sumChargedHadronPt + std::max(0.0,
         pfIso.sumNeutralHadronEt + pfIso.sumPhotonEt - 0.5 * pfIso.sumPUPt)) / ele->pt());
-      eleEffAreaTimesRho_.push_back(area * eleRho_);
+      eleEffAreaTimesRho_.push_back(area * rho_);
     }
 
     bool passConvVeto = !ConversionTools::hasMatchedConversion(
