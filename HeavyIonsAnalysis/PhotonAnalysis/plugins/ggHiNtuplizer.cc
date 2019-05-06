@@ -392,6 +392,24 @@ ggHiNtuplizer::ggHiNtuplizer(const edm::ParameterSet& ps) :
       tree_->Branch("pfnIso3",&pfnIso3);
       tree_->Branch("pfnIso4",&pfnIso4);
       tree_->Branch("pfnIso5",&pfnIso5);
+
+      tree_->Branch("pfcIso1subUE",&pfcIso1subUE);
+      tree_->Branch("pfcIso2subUE",&pfcIso2subUE);
+      tree_->Branch("pfcIso3subUE",&pfcIso3subUE);
+      tree_->Branch("pfcIso4subUE",&pfcIso4subUE);
+      tree_->Branch("pfcIso5subUE",&pfcIso5subUE);
+
+      tree_->Branch("pfpIso1subUE",&pfpIso1subUE);
+      tree_->Branch("pfpIso2subUE",&pfpIso2subUE);
+      tree_->Branch("pfpIso3subUE",&pfpIso3subUE);
+      tree_->Branch("pfpIso4subUE",&pfpIso4subUE);
+      tree_->Branch("pfpIso5subUE",&pfpIso5subUE);
+
+      tree_->Branch("pfnIso1subUE",&pfnIso1subUE);
+      tree_->Branch("pfnIso2subUE",&pfnIso2subUE);
+      tree_->Branch("pfnIso3subUE",&pfnIso3subUE);
+      tree_->Branch("pfnIso4subUE",&pfnIso4subUE);
+      tree_->Branch("pfnIso5subUE",&pfnIso5subUE);
     }
   }
 
@@ -731,6 +749,22 @@ void ggHiNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es)
       pfnIso3.clear();
       pfnIso4.clear();
       pfnIso5.clear();
+
+      pfcIso1subUE.clear();
+      pfcIso2subUE.clear();
+      pfcIso3subUE.clear();
+      pfcIso4subUE.clear();
+      pfcIso5subUE.clear();
+      pfpIso1subUE.clear();
+      pfpIso2subUE.clear();
+      pfpIso3subUE.clear();
+      pfpIso4subUE.clear();
+      pfpIso5subUE.clear();
+      pfnIso1subUE.clear();
+      pfnIso2subUE.clear();
+      pfnIso3subUE.clear();
+      pfnIso4subUE.clear();
+      pfnIso5subUE.clear();
     }
   }
 
@@ -1497,6 +1531,24 @@ void ggHiNtuplizer::fillPhotons(const edm::Event& e, const edm::EventSetup& es, 
       pfpIso3.push_back( pfIso.getPfIso(*pho, 4, 0.3, 0.0, 0.0, 0.015 ));
       pfpIso4.push_back( pfIso.getPfIso(*pho, 4, 0.4, 0.0, 0.0, 0.015 ));
       pfpIso5.push_back( pfIso.getPfIso(*pho, 4, 0.5, 0.0, 0.0, 0.015 ));
+
+      pfcIso1subUE.push_back( pfIso.getPfIsoSubUE(*pho, 1, 0.1, 0.02, 0.0, 0 ));
+      pfcIso2subUE.push_back( pfIso.getPfIsoSubUE(*pho, 1, 0.2, 0.02, 0.0, 0 ));
+      pfcIso3subUE.push_back( pfIso.getPfIsoSubUE(*pho, 1, 0.3, 0.02, 0.0, 0 ));
+      pfcIso4subUE.push_back( pfIso.getPfIsoSubUE(*pho, 1, 0.4, 0.02, 0.0, 0 ));
+      pfcIso5subUE.push_back( pfIso.getPfIsoSubUE(*pho, 1, 0.5, 0.02, 0.0, 0 ));
+
+      pfnIso1subUE.push_back( pfIso.getPfIsoSubUE(*pho, 5, 0.1, 0.0, 0.0, 0 ));
+      pfnIso2subUE.push_back( pfIso.getPfIsoSubUE(*pho, 5, 0.2, 0.0, 0.0, 0 ));
+      pfnIso3subUE.push_back( pfIso.getPfIsoSubUE(*pho, 5, 0.3, 0.0, 0.0, 0 ));
+      pfnIso4subUE.push_back( pfIso.getPfIsoSubUE(*pho, 5, 0.4, 0.0, 0.0, 0 ));
+      pfnIso5subUE.push_back( pfIso.getPfIsoSubUE(*pho, 5, 0.5, 0.0, 0.0, 0 ));
+
+      pfpIso1subUE.push_back( pfIso.getPfIsoSubUE(*pho, 4, 0.1, 0.0, 0.0, 0.015 ));
+      pfpIso2subUE.push_back( pfIso.getPfIsoSubUE(*pho, 4, 0.2, 0.0, 0.0, 0.015 ));
+      pfpIso3subUE.push_back( pfIso.getPfIsoSubUE(*pho, 4, 0.3, 0.0, 0.0, 0.015 ));
+      pfpIso4subUE.push_back( pfIso.getPfIsoSubUE(*pho, 4, 0.4, 0.0, 0.0, 0.015 ));
+      pfpIso5subUE.push_back( pfIso.getPfIsoSubUE(*pho, 4, 0.5, 0.0, 0.0, 0.015 ));
     }
 
     //////////////////////////////////// MC matching ////////////////////////////////////

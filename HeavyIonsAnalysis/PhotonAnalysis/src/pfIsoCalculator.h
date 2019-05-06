@@ -16,6 +16,8 @@ class pfIsoCalculator
     pfIsoCalculator(const edm::Event &iEvent, const edm::EDGetTokenT<edm::View<reco::PFCandidate> > pfCandidates, const math::XYZPoint& pv);
 
     double getPfIso(const reco::Photon& photon,  int pfId, double r1=0.4, double r2=0.00, double threshold=0, double jWidth=0.0);
+    double getPfIsoSubUE(const reco::Photon& photon,  int pfId, double r1=0.4, double r2=0.00, double threshold=0, double jWidth=0.0);
+
     double getPfIso(const reco::GsfElectron& ele, int pfId, double r1=0.4, double r2=0.00, double threshold=0);
 
   private:

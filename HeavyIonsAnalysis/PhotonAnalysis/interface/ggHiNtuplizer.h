@@ -383,6 +383,25 @@ class ggHiNtuplizer : public edm::EDAnalyzer {
    std::vector<float> pfnIso4;
    std::vector<float> pfnIso5;
 
+   // photon pf isolation UE-subtracted
+   std::vector<float> pfcIso1subUE;
+   std::vector<float> pfcIso2subUE;
+   std::vector<float> pfcIso3subUE;
+   std::vector<float> pfcIso4subUE;
+   std::vector<float> pfcIso5subUE;
+
+   std::vector<float> pfpIso1subUE;
+   std::vector<float> pfpIso2subUE;
+   std::vector<float> pfpIso3subUE;
+   std::vector<float> pfpIso4subUE;
+   std::vector<float> pfpIso5subUE;
+
+   std::vector<float> pfnIso1subUE;
+   std::vector<float> pfnIso2subUE;
+   std::vector<float> pfnIso3subUE;
+   std::vector<float> pfnIso4subUE;
+   std::vector<float> pfnIso5subUE;
+
    // reco::Muon
    Int_t          nMu_;
    std::vector<float>  muPt_;
