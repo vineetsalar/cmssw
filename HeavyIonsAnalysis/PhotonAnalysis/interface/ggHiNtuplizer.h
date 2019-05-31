@@ -57,6 +57,7 @@ class ggHiNtuplizer : public edm::EDAnalyzer {
    bool runOnParticleGun_;
    bool useValMapIso_;
    bool doPfIso_;
+   bool removePhotonPfIsoFootprint_;
    bool doEReg_;
    bool doEffectiveAreas_;
    bool doVID_;
@@ -79,6 +80,8 @@ class ggHiNtuplizer : public edm::EDAnalyzer {
    edm::EDGetTokenT<reco::BeamSpot> beamSpotToken_;
    edm::EDGetTokenT<reco::ConversionCollection> conversionsToken_;
    edm::EDGetTokenT<edm::View<reco::PFCandidate> >    pfCollection_;
+
+   edm::EDGetToken particleBasedIsolationPhoton_;
 
    edm::EDGetTokenT<EcalRecHitCollection> recHitsEB_;
    edm::EDGetTokenT<EcalRecHitCollection> recHitsEE_;
@@ -365,42 +368,54 @@ class ggHiNtuplizer : public edm::EDAnalyzer {
    std::vector<int> rhBCIdx_;    // index of this rechit's BC in the SC
 
    // photon pf isolation stuff
-   std::vector<float> pfcIso1;
-   std::vector<float> pfcIso2;
-   std::vector<float> pfcIso3;
-   std::vector<float> pfcIso4;
-   std::vector<float> pfcIso5;
+   std::vector<float> pfcIso1_;
+   std::vector<float> pfcIso2_;
+   std::vector<float> pfcIso3_;
+   std::vector<float> pfcIso4_;
+   std::vector<float> pfcIso5_;
 
-   std::vector<float> pfpIso1;
-   std::vector<float> pfpIso2;
-   std::vector<float> pfpIso3;
-   std::vector<float> pfpIso4;
-   std::vector<float> pfpIso5;
+   std::vector<float> pfpIso1_;
+   std::vector<float> pfpIso2_;
+   std::vector<float> pfpIso3_;
+   std::vector<float> pfpIso4_;
+   std::vector<float> pfpIso5_;
 
-   std::vector<float> pfnIso1;
-   std::vector<float> pfnIso2;
-   std::vector<float> pfnIso3;
-   std::vector<float> pfnIso4;
-   std::vector<float> pfnIso5;
+   std::vector<float> pfnIso1_;
+   std::vector<float> pfnIso2_;
+   std::vector<float> pfnIso3_;
+   std::vector<float> pfnIso4_;
+   std::vector<float> pfnIso5_;
+
+   std::vector<float> pfpIso1subSC_;
+   std::vector<float> pfpIso2subSC_;
+   std::vector<float> pfpIso3subSC_;
+   std::vector<float> pfpIso4subSC_;
+   std::vector<float> pfpIso5subSC_;
 
    // photon pf isolation UE-subtracted
-   std::vector<float> pfcIso1subUE;
-   std::vector<float> pfcIso2subUE;
-   std::vector<float> pfcIso3subUE;
-   std::vector<float> pfcIso4subUE;
-   std::vector<float> pfcIso5subUE;
+   std::vector<float> pfcIso1subUE_;
+   std::vector<float> pfcIso2subUE_;
+   std::vector<float> pfcIso3subUE_;
+   std::vector<float> pfcIso4subUE_;
+   std::vector<float> pfcIso5subUE_;
 
-   std::vector<float> pfpIso1subUE;
-   std::vector<float> pfpIso2subUE;
-   std::vector<float> pfpIso3subUE;
-   std::vector<float> pfpIso4subUE;
-   std::vector<float> pfpIso5subUE;
+   std::vector<float> pfpIso1subUE_;
+   std::vector<float> pfpIso2subUE_;
+   std::vector<float> pfpIso3subUE_;
+   std::vector<float> pfpIso4subUE_;
+   std::vector<float> pfpIso5subUE_;
 
-   std::vector<float> pfnIso1subUE;
-   std::vector<float> pfnIso2subUE;
-   std::vector<float> pfnIso3subUE;
-   std::vector<float> pfnIso4subUE;
-   std::vector<float> pfnIso5subUE;
+   std::vector<float> pfnIso1subUE_;
+   std::vector<float> pfnIso2subUE_;
+   std::vector<float> pfnIso3subUE_;
+   std::vector<float> pfnIso4subUE_;
+   std::vector<float> pfnIso5subUE_;
+
+   std::vector<float> pfpIso1subSCsubUE_;
+   std::vector<float> pfpIso2subSCsubUE_;
+   std::vector<float> pfpIso3subSCsubUE_;
+   std::vector<float> pfpIso4subSCsubUE_;
+   std::vector<float> pfpIso5subSCsubUE_;
 
    // reco::Muon
    Int_t          nMu_;

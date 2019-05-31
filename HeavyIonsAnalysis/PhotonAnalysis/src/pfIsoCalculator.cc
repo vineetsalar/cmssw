@@ -11,31 +11,55 @@ pfIsoCalculator::pfIsoCalculator(const edm::Event &iEvent,
   vtx_ = pv;
 }
 
+// copied from https://github.com/cms-sw/cmssw/blob/master/RecoEgamma/PhotonIdentification/plugins/PhotonIDValueMapProducer.cc#L26
+template <class T>
+bool pfIsoCalculator::isInFootprint(const T& footprint,
+                   const edm::Ptr<reco::Candidate>& candidate)
+{
+    for (auto& it : footprint) {
+        if (it.key() == candidate.key())
+            return true;
+    }
+    return false;
+}
+
 double pfIsoCalculator::getPfIso(const reco::Photon& photon, int pfId,
                                  double r1, double r2, double threshold,
-                                 double jWidth)
+                                 double jWidth, int footprintRemoval, const std::vector<reco::PFCandidateRef>& particlesInIsoMap)
 {
   double photonEta = photon.eta();
   double photonPhi = photon.phi();
   double totalEt = 0;
 
-  for (const auto& pf : *candidatesView) {
-    if ( pf.particleId() != pfId )   continue;
-    double pfEta = pf.eta();
-    double pfPhi = pf.phi();
+  if (footprintRemoval == pfIsoCalculator::removeSCenergy) {
+    totalEt -= (photon.superCluster()->rawEnergy() / std::cosh(photon.superCluster()->eta()));
+  }
+
+  for (auto pf = candidatesView->begin(); pf != candidatesView->end(); ++pf) {
+    if ( pf->particleId() != pfId )   continue;
+    double pfEta = pf->eta();
+    double pfPhi = pf->phi();
 
     double dEta = std::abs(photonEta - pfEta);
     double dPhi = reco::deltaPhi(pfPhi, photonPhi);
     double dR2 = dEta*dEta + dPhi*dPhi;
-    double pfPt = pf.pt();
+    double pfPt = pf->pt();
 
-    // remove the photon itself
-    if ( pf.superClusterRef() == photon.superCluster() ) continue;
+    if (footprintRemoval == pfIsoCalculator::removePFcand) {
+      // remove the photon itself and associated PF candidates
+      if ( pf->superClusterRef() == photon.superCluster() ) {
+        continue;
+      }
+      edm::Ptr<reco::Candidate> candPtr(candidatesView, pf - candidatesView->begin());
+      if ( isInFootprint(particlesInIsoMap, candPtr) ) {
+        continue;
+      }
+    }
 
-    if(pf.particleId() == reco::PFCandidate::h){
-      float dz = std::abs(pf.vz() - vtx_.z());
+    if(pf->particleId() == reco::PFCandidate::h){
+      float dz = std::abs(pf->vz() - vtx_.z());
       if (dz > 0.2) continue;
-      double dxy = ((vtx_.x() - pf.vx())*pf.py() + (pf.vy() - vtx_.y())*pf.px()) / pf.pt();
+      double dxy = ((vtx_.x() - pf->vx())*pf->py() + (pf->vy() - vtx_.y())*pf->px()) / pf->pt();
       if (std::abs(dxy) > 0.1) continue;
     }
 
@@ -52,34 +76,46 @@ double pfIsoCalculator::getPfIso(const reco::Photon& photon, int pfId,
 
 double pfIsoCalculator::getPfIsoSubUE(const reco::Photon& photon, int pfId,
                                       double r1, double r2, double threshold,
-                                      double jWidth)
+                                      double jWidth, int footprintRemoval, const std::vector<reco::PFCandidateRef>& particlesInIsoMap)
 {
   double photonEta = photon.eta();
   double photonPhi = photon.phi();
   double totalEt = 0;
 
-  for (const auto& pf : *candidatesView) {
-    if ( pf.particleId() != pfId )   continue;
-    double pfEta = pf.eta();
-    double pfPhi = pf.phi();
+  if (footprintRemoval == pfIsoCalculator::removeSCenergy) {
+    totalEt -= (photon.superCluster()->rawEnergy() / std::cosh(photon.superCluster()->eta()));
+  }
+
+  for (auto pf = candidatesView->begin(); pf != candidatesView->end(); ++pf) {
+    if ( pf->particleId() != pfId )   continue;
+    double pfEta = pf->eta();
+    double pfPhi = pf->phi();
 
     double dEta = std::abs(photonEta - pfEta);
     if (dEta > r1) continue;
     if (dEta < jWidth)  continue;
 
-    // remove the photon itself
-    if ( pf.superClusterRef() == photon.superCluster() ) continue;
+    if (footprintRemoval == pfIsoCalculator::removePFcand) {
+      // remove the photon itself and associated PF candidates
+      if ( pf->superClusterRef() == photon.superCluster() ) {
+        continue;
+      }
+      edm::Ptr<reco::Candidate> candPtr(candidatesView, pf - candidatesView->begin());
+      if ( isInFootprint(particlesInIsoMap, candPtr) ) {
+        continue;
+      }
+    }
 
-    if(pf.particleId() == reco::PFCandidate::h){
-      float dz = std::abs(pf.vz() - vtx_.z());
+    if(pf->particleId() == reco::PFCandidate::h){
+      float dz = std::abs(pf->vz() - vtx_.z());
       if (dz > 0.2) continue;
-      double dxy = ((vtx_.x() - pf.vx())*pf.py() + (pf.vy() - vtx_.y())*pf.px()) / pf.pt();
+      double dxy = ((vtx_.x() - pf->vx())*pf->py() + (pf->vy() - vtx_.y())*pf->px()) / pf->pt();
       if (std::abs(dxy) > 0.1) continue;
     }
 
     double dPhi = reco::deltaPhi(pfPhi, photonPhi);
     double dR2 = dEta*dEta + dPhi*dPhi;
-    double pfPt = pf.pt();
+    double pfPt = pf->pt();
 
     // Jurassic Cone /////
     if (dR2 < r2 * r2) continue;
@@ -112,7 +148,7 @@ double pfIsoCalculator::getPfIsoSubUE(const reco::Photon& photon, int pfId,
   areaStrip -= areaInnerCone;
   areaCone -= areaInnerCone;
 
-  double subEt = getPfIso(photon, pfId, r1, r2, threshold, jWidth) - totalEt * (areaCone / areaStrip);
+  double subEt = getPfIso(photon, pfId, r1, r2, threshold, jWidth, footprintRemoval, particlesInIsoMap) - totalEt * (areaCone / areaStrip);
   return subEt;
 }
 
@@ -123,23 +159,23 @@ double pfIsoCalculator::getPfIso(const reco::GsfElectron& ele, int pfId,
   double elePhi = ele.phi();
   double totalEt = 0.;
 
-  for (const auto& pf : *candidatesView) {
-    if ( pf.particleId() != pfId )   continue;
-    double pfEta = pf.eta();
-    double pfPhi = pf.phi();
+  for (auto pf = candidatesView->begin(); pf != candidatesView->end(); ++pf) {
+    if ( pf->particleId() != pfId )   continue;
+    double pfEta = pf->eta();
+    double pfPhi = pf->phi();
 
     double dEta = std::abs(eleEta - pfEta);
     double dPhi = reco::deltaPhi(pfPhi, elePhi);
     double dR2 = dEta*dEta + dPhi*dPhi;
-    double pfPt = pf.pt();
+    double pfPt = pf->pt();
 
     // remove electron itself
-    if (pf.particleId() == reco::PFCandidate::e) continue;
+    if (pf->particleId() == reco::PFCandidate::e) continue;
 
-    if (pf.particleId() == reco::PFCandidate::h) {
-      float dz = std::abs(pf.vz() - vtx_.z());
+    if (pf->particleId() == reco::PFCandidate::h) {
+      float dz = std::abs(pf->vz() - vtx_.z());
       if (dz > 0.2) continue;
-      double dxy = ((vtx_.x() - pf.vx())*pf.py() + (pf.vy() - vtx_.y())*pf.px()) / pf.pt();
+      double dxy = ((vtx_.x() - pf->vx())*pf->py() + (pf->vy() - vtx_.y())*pf->px()) / pf->pt();
       if (std::abs(dxy) > 0.1) continue;
     }
 
