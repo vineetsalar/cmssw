@@ -299,8 +299,8 @@ class ggHiNtuplizer : public edm::EDAnalyzer {
    std::vector<float>  phoHadTowerOverEm_;
    std::vector<float>  phoHoverE_;
    std::vector<float>  phoSigmaIEtaIEta_;
-// std::vector<float>  phoSigmaIEtaIPhi_;   // TODO: not available in reco::
-// std::vector<float>  phoSigmaIPhiIPhi_;   // TODO: not available in reco::
+   std::vector<float>  phoSigmaIEtaIPhi_;
+   std::vector<float>  phoSigmaIPhiIPhi_;
    std::vector<float>  phoE1x5_;
    std::vector<float>  phoE2x5_;
    std::vector<float>  phoE3x3_;
@@ -311,6 +311,8 @@ class ggHiNtuplizer : public edm::EDAnalyzer {
    std::vector<float>  phoR2x5_;
    std::vector<float>  phoR9_2012_;
    std::vector<float>  phoSigmaIEtaIEta_2012_;
+   std::vector<float>  phoSigmaIEtaIPhi_2012_;
+   std::vector<float>  phoSigmaIPhiIPhi_2012_;
    std::vector<float>  phoE1x5_2012_;
    std::vector<float>  phoE2x5_2012_;
    std::vector<float>  phoE3x3_2012_;

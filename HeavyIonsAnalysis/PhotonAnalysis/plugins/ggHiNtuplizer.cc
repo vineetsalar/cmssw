@@ -305,8 +305,8 @@ ggHiNtuplizer::ggHiNtuplizer(const edm::ParameterSet& ps) :
     tree_->Branch("phoHadTowerOverEm",     &phoHadTowerOverEm_);
     tree_->Branch("phoHoverE",             &phoHoverE_);
     tree_->Branch("phoSigmaIEtaIEta",      &phoSigmaIEtaIEta_);
-    // tree_->Branch("phoSigmaIEtaIPhi",      &phoSigmaIEtaIPhi_);  // TODO: not available in reco::
-    // tree_->Branch("phoSigmaIPhiIPhi",      &phoSigmaIPhiIPhi_);  // TODO: not available in reco::
+    tree_->Branch("phoSigmaIEtaIPhi",      &phoSigmaIEtaIPhi_);
+    tree_->Branch("phoSigmaIPhiIPhi",      &phoSigmaIPhiIPhi_);
     tree_->Branch("phoE1x5",               &phoE1x5_);
     tree_->Branch("phoE2x5",               &phoE2x5_);
     tree_->Branch("phoE3x3",               &phoE3x3_);
@@ -317,6 +317,8 @@ ggHiNtuplizer::ggHiNtuplizer(const edm::ParameterSet& ps) :
     tree_->Branch("phoR2x5",               &phoR2x5_);
     tree_->Branch("phoR9_2012",            &phoR9_2012_);
     tree_->Branch("phoSigmaIEtaIEta_2012", &phoSigmaIEtaIEta_2012_);
+    tree_->Branch("phoSigmaIEtaIPhi_2012", &phoSigmaIEtaIPhi_2012_);
+    tree_->Branch("phoSigmaIPhiIPhi_2012", &phoSigmaIPhiIPhi_2012_);
     tree_->Branch("phoE1x5_2012",          &phoE1x5_2012_);
     tree_->Branch("phoE2x5_2012",          &phoE2x5_2012_);
     tree_->Branch("phoE3x3_2012",          &phoE3x3_2012_);
@@ -678,8 +680,8 @@ void ggHiNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es)
     phoHadTowerOverEm_    .clear();
     phoHoverE_            .clear();
     phoSigmaIEtaIEta_     .clear();
-    // phoSigmaIEtaIPhi_     .clear();  // TODO: not available in reco::
-    // phoSigmaIPhiIPhi_     .clear();  // TODO: not available in reco::
+    phoSigmaIEtaIPhi_     .clear();
+    phoSigmaIPhiIPhi_     .clear();
     phoE1x5_              .clear();
     phoE2x5_              .clear();
     phoE3x3_              .clear();
@@ -690,6 +692,8 @@ void ggHiNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es)
     phoR2x5_              .clear();
     phoR9_2012_           .clear();
     phoSigmaIEtaIEta_2012_.clear();
+    phoSigmaIEtaIPhi_2012_.clear();
+    phoSigmaIPhiIPhi_2012_.clear();
     phoE1x5_2012_         .clear();
     phoE2x5_2012_         .clear();
     phoE3x3_2012_         .clear();
@@ -1396,8 +1400,8 @@ void ggHiNtuplizer::fillPhotons(const edm::Event& e, const edm::EventSetup& es, 
     phoHadTowerOverEm_.push_back(pho->hadTowOverEm());
     phoHoverE_        .push_back(pho->hadronicOverEm());
     phoSigmaIEtaIEta_ .push_back(pho->sigmaIetaIeta());
-    // phoSigmaIEtaIPhi_ .push_back(pho->sep());   // TODO: not available in reco::
-    // phoSigmaIPhiIPhi_ .push_back(pho->spp());   // TODO: not available in reco::
+    phoSigmaIEtaIPhi_ .push_back(pho->showerShapeVariables().sigmaIetaIphi);
+    phoSigmaIPhiIPhi_ .push_back(pho->showerShapeVariables().sigmaIphiIphi);
 
     // additional shower shape variables
     phoE3x3_          .push_back(pho->e3x3());
@@ -1412,6 +1416,8 @@ void ggHiNtuplizer::fillPhotons(const edm::Event& e, const edm::EventSetup& es, 
     // full 5x5
     phoR9_2012_           .push_back(pho->full5x5_r9());
     phoSigmaIEtaIEta_2012_.push_back(pho->full5x5_sigmaIetaIeta());
+    phoSigmaIEtaIPhi_2012_.push_back(pho->full5x5_showerShapeVariables().sigmaIetaIphi);
+    phoSigmaIPhiIPhi_2012_.push_back(pho->full5x5_showerShapeVariables().sigmaIphiIphi);
     phoE1x5_2012_.push_back(pho->full5x5_e1x5());
     phoE2x5_2012_.push_back(pho->full5x5_e2x5());
     phoE3x3_2012_.push_back(pho->full5x5_e3x3());
