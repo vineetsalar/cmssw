@@ -441,6 +441,13 @@ ggHiNtuplizer::ggHiNtuplizer(const edm::ParameterSet& ps) :
     tree_->Branch("muCharge",              &muCharge_);
     tree_->Branch("muType",                &muType_);
     tree_->Branch("muIsGood",              &muIsGood_);
+    
+    tree_->Branch("muIsGlobal",            &muIsGlobal_);
+    tree_->Branch("muIsTracker",           &muIsTracker_);
+    tree_->Branch("muIsPF",                &muIsPF_);
+    tree_->Branch("muIsSTA",               &muIsSTA_);
+
+
     tree_->Branch("muD0",                  &muD0_);
     tree_->Branch("muDz",                  &muDz_);
     tree_->Branch("muIP3D",                &muIP3D_);
@@ -450,6 +457,17 @@ ggHiNtuplizer::ggHiNtuplizer(const edm::ParameterSet& ps) :
     tree_->Branch("muChi2NDF",             &muChi2NDF_);
     tree_->Branch("muInnerD0",             &muInnerD0_);
     tree_->Branch("muInnerDz",             &muInnerDz_);
+    
+    tree_->Branch("muInnerD0Err",          &muInnerD0Err_);
+    tree_->Branch("muInnerDzErr",          &muInnerDzErr_);
+    tree_->Branch("muInnerPt",             &muInnerPt_);
+    tree_->Branch("muInnerPtErr",             &muInnerPtErr_);
+    tree_->Branch("muInnerEta",             &muInnerEta_);
+
+
+
+
+
     tree_->Branch("muTrkLayers",           &muTrkLayers_);
     tree_->Branch("muPixelLayers",         &muPixelLayers_);
     tree_->Branch("muPixelHits",           &muPixelHits_);
@@ -808,6 +826,14 @@ void ggHiNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es)
     muCharge_             .clear();
     muType_               .clear();
     muIsGood_             .clear();
+
+    muIsGlobal_.clear();
+    muIsTracker_.clear();
+    muIsPF_.clear();
+    muIsSTA_.clear();
+    
+
+
     muD0_                 .clear();
     muDz_                 .clear();
     muIP3D_               .clear();
@@ -817,6 +843,14 @@ void ggHiNtuplizer::analyze(const edm::Event& e, const edm::EventSetup& es)
     muChi2NDF_            .clear();
     muInnerD0_            .clear();
     muInnerDz_            .clear();
+    
+    muInnerD0Err_.clear();
+    muInnerDzErr_.clear();
+    muInnerPt_.clear();
+    muInnerPtErr_.clear();
+    muInnerEta_.clear();
+   
+
     muTrkLayers_          .clear();
     muPixelLayers_        .clear();
     muPixelHits_          .clear();
@@ -1659,7 +1693,8 @@ void ggHiNtuplizer::fillMuons(const edm::Event& e, const edm::EventSetup& es, re
   e.getByToken(recoMuonsCollection_, recoMuonsHandle);
 
   for (const auto& mu : *recoMuonsHandle) {
-    if (mu.pt() < 5) continue;
+    
+    if (mu.pt() < 3.0) continue;
     if (!(mu.isPFMuon() || mu.isGlobalMuon() || mu.isTrackerMuon())) continue;
 
     muPt_    .push_back(mu.pt());
@@ -1668,6 +1703,12 @@ void ggHiNtuplizer::fillMuons(const edm::Event& e, const edm::EventSetup& es, re
     muCharge_.push_back(mu.charge());
     muType_  .push_back(mu.type());
     muIsGood_.push_back(muon::isGoodMuon(mu, muon::selectionTypeFromString("TMOneStationTight")));
+    
+    muIsGlobal_   .push_back((int)mu.isGlobalMuon());
+    muIsTracker_  .push_back((int)mu.isTrackerMuon());
+    muIsPF_       .push_back((int)mu.isPFMuon());
+    muIsSTA_      .push_back((int)mu.isStandAloneMuon());
+
     muD0_    .push_back(mu.muonBestTrack()->dxy(pv.position()));
     muDz_    .push_back(mu.muonBestTrack()->dz(pv.position()));
     muD0Err_ .push_back(mu.muonBestTrack()->dxyError());
@@ -1699,6 +1740,14 @@ void ggHiNtuplizer::fillMuons(const edm::Event& e, const edm::EventSetup& es, re
     if (innMu.isNull()) {
       muInnerD0_     .push_back(-99);
       muInnerDz_     .push_back(-99);
+      
+      muInnerD0Err_  .push_back(-99);
+      muInnerDzErr_  .push_back(-99);
+      muInnerPt_     .push_back(-99);
+      muInnerPtErr_  .push_back(-99);
+      muInnerEta_    .push_back(-99);
+     
+      
       muTrkLayers_   .push_back(-99);
       muPixelLayers_ .push_back(-99);
       muPixelHits_   .push_back(-99);
@@ -1706,6 +1755,13 @@ void ggHiNtuplizer::fillMuons(const edm::Event& e, const edm::EventSetup& es, re
     } else {
       muInnerD0_     .push_back(innMu->dxy(pv.position()));
       muInnerDz_     .push_back(innMu->dz(pv.position()));
+      
+      muInnerD0Err_  .push_back(innMu->dxyError());
+      muInnerDzErr_  .push_back(innMu->dzError());
+      muInnerPt_     .push_back(innMu->pt());
+      muInnerPtErr_  .push_back(innMu->ptError());
+      muInnerEta_    .push_back(innMu->eta());
+      
       muTrkLayers_   .push_back(innMu->hitPattern().trackerLayersWithMeasurement());
       muPixelLayers_ .push_back(innMu->hitPattern().pixelLayersWithMeasurement());
       muPixelHits_   .push_back(innMu->hitPattern().numberOfValidPixelHits());

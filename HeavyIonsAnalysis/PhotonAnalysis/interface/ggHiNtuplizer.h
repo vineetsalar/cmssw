@@ -427,6 +427,12 @@ class ggHiNtuplizer : public edm::EDAnalyzer {
    std::vector<int>    muCharge_;
    std::vector<int>    muType_;
    std::vector<int>    muIsGood_;
+   
+   std::vector<int>    muIsGlobal_;
+   std::vector<int>    muIsTracker_;
+   std::vector<int>    muIsPF_;
+   std::vector<int>    muIsSTA_;
+
    std::vector<float>  muD0_;
    std::vector<float>  muDz_;
    std::vector<float>  muIP3D_;
@@ -436,6 +442,13 @@ class ggHiNtuplizer : public edm::EDAnalyzer {
    std::vector<float>  muChi2NDF_;
    std::vector<float>  muInnerD0_;
    std::vector<float>  muInnerDz_;
+
+   std::vector<float>  muInnerD0Err_;
+   std::vector<float>  muInnerDzErr_;
+   std::vector<float>  muInnerPt_;
+   std::vector<float>  muInnerPtErr_;
+   std::vector<float>  muInnerEta_;
+
    std::vector<int>    muTrkLayers_;
    std::vector<int>    muPixelLayers_;
    std::vector<int>    muPixelHits_;
